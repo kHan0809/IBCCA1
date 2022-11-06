@@ -37,9 +37,9 @@ for task_ in task_list:
 
         epoch_count += 1
         if epoch_count % args.eval_period == 0:
-          q1, q2, v = agent.test_q(batch)
-          log.write_q(epoch_count,torch.mean(q1).cpu().detach().numpy(),torch.mean(q2).cpu().detach().numpy())
-          print("[epoch] :", epoch_count, "Q1 : ", sum(q1) / batch[0].shape[0], "Q2 : ", sum(q2) / batch[0].shape[0], "v : ", sum(v)/batch[0].shape[0])
+          v = agent.test_q(batch)
+          log.write_q(epoch_count,torch.mean(v).cpu().detach().numpy(),torch.mean(v).cpu().detach().numpy())
+          print("[epoch] :", epoch_count,"v : ", sum(v)/batch[0].shape[0])
           agent.save_checkpoint(task+str(args.cql), iteration, 0, "./model_save/bc_q")
 
       #==========QBC train====================
@@ -51,7 +51,7 @@ for task_ in task_list:
 
       for num in range(args.qbc_train_epoch):
         for step in range(args.train_num_per_epoch):
-          batch = dataset.get_data()
+          batch = dataset.get_data(batch_size=args.batch_size)
           agent.train_QBC(batch)
         epoch_count += 1
 
@@ -60,8 +60,3 @@ for task_ in task_list:
           mean_, min_, max_  = Eval(env,agent,epoch_count,args)
           log.write_eval(epoch_count, mean_, min_, max_)
           agent.save_checkpoint(task + str(args.cql), iteration, epoch_count, "./model_save/qbc")
-
-
-      # if mean_ > max_return:
-      #   max_return, max_idx = copy.deepcopy(mean_), copy.deepcopy(epoch_count)
-      #   agent.save_checkpoint(args.task_name+str(args.cql), epoch_count, "./model_save/qbc")

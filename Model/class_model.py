@@ -113,49 +113,38 @@ class BC_agent:
         self.pi_opt.step()
 
     def train_Q(self, batch,cql=False):
-        state_batch, action_batch, reward_batch, next_state_batch, done_batch = batch
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch, Return_batch = batch
 
         state_batch = torch.FloatTensor(state_batch).to(self.args.device_train)
         action_batch = torch.FloatTensor(action_batch).to(self.args.device_train)
         reward_batch = torch.FloatTensor(reward_batch).to(self.args.device_train).unsqueeze(1)
         next_state_batch = torch.FloatTensor(next_state_batch).to(self.args.device_train)
         done_batch = torch.FloatTensor(done_batch).to(self.args.device_train).unsqueeze(1)
+        Return_batch = torch.FloatTensor(Return_batch).to(self.args.device_train).unsqueeze(1)
 
-        self.v_train(state_batch, action_batch, reward_batch, next_state_batch, done_batch)
-        self.q_train(state_batch, action_batch, reward_batch, next_state_batch, done_batch)
-
+        self.v_train(state_batch, action_batch, reward_batch, next_state_batch, done_batch,Return_batch)
         with torch.no_grad():
             soft_update(self.target_v, self.v, self.tau)
 
 
     def test_q(self,batch):
-        state_batch, action_batch, reward_batch, next_state_batch, done_batch = batch
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch, Return_batch = batch
         state_batch = torch.FloatTensor(state_batch).to(self.args.device_train)
-        action_batch = torch.FloatTensor(action_batch).to(self.args.device_train)
         with torch.no_grad():
-            q_values_dist_A, q_values_dist_B = self.q1(state_batch, action_batch), self.q2(state_batch, action_batch)
-            q_values_A = q_values_dist_A.mean(1).unsqueeze(1)
-            q_values_B = q_values_dist_B.mean(1).unsqueeze(1)
-            v_value_dist = self.v(state_batch)
-            v_value = v_value_dist.mean(1).unsqueeze(1)
-        return q_values_A, q_values_B, v_value
+            v_value = self.v(state_batch)
+        return v_value
 
     def train_QBC(self,batch,cql=False):
-        state_batch, action_batch, reward_batch, next_state_batch, done_batch = batch
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch, Return_batch = batch
 
         state_batch = torch.FloatTensor(state_batch).to(self.args.device_train)
         action_batch = torch.FloatTensor(action_batch).to(self.args.device_train)
+        Return_batch = torch.FloatTensor(Return_batch).to(self.args.device_train).unsqueeze(1)
 
         self.pi.train()
         with torch.no_grad():
-            v_value_dist = self.v(state_batch)
-            v_value = v_value_dist.mean(1).unsqueeze(1)
-
-            q_values_A, q_values_B = self.q1(state_batch, action_batch), self.q2(state_batch, action_batch)
-
-            # weight = torch.exp(torch.min((q_values_A-min_q),(q_values_B-min_q))/self.beta).clamp(1.0,3.0) - torch.ones_like(q_values_A)
-            # weight = (torch.exp(torch.min((q_values_A - v_value), (q_values_B - v_value)) / abs(v_value)) - torch.ones_like(q_values_A)).clamp(0.0,0.8)
-            weight = (torch.exp(torch.min((q_values_A - v_value), (q_values_B - v_value)) / 0.05) - torch.ones_like(q_values_A)).clamp(0.0, 0.5)
+            v_value = self.v(state_batch)
+            weight = (torch.exp((Return_batch - v_value) / 0.05) - torch.ones_like(Return_batch)).clamp(0.0, 0.5)
 
         self.pi_opt.zero_grad()
         pred_action = self.pi(state_batch)
@@ -163,31 +152,9 @@ class BC_agent:
         action_loss.backward()
         self.pi_opt.step()
 
-
-    def q_train(self,state_batch,action_batch,reward_batch,next_state_batch,done_batch):
-        self.q1_opt.zero_grad()
-        self.q2_opt.zero_grad()
-        target_q = reward_batch + self.gamma * (1 - done_batch) * self.target_v(next_state_batch)
-        target_q = target_q.detach()
-
-        critic1_loss = F.mse_loss(input=self.q1(state_batch, action_batch), target=target_q)
-        critic2_loss = F.mse_loss(input=self.q2(state_batch, action_batch), target=target_q)
-
-        q_loss = (critic1_loss + critic2_loss)
-
-        q_loss.backward()
-        self.q1_opt.step()
-        self.q2_opt.step()
-
-
-    def v_train(self,state_batch,action_batch,reward_batch,next_state_batch,done_batch):
+    def v_train(self,state_batch,action_batch,reward_batch,next_state_batch,done_batch,Return_batch):
         self.v.zero_grad()
-        with torch.no_grad():
-            # noise = (torch.randn_like(action_batch) * 0.2).clamp(-0.5, 0.5)
-            # action_batch = (action_batch + noise).clamp(-1., 1.)
-            target_v = torch.minimum(self.q1(state_batch,action_batch),self.q2(state_batch,action_batch))
-
-        v_loss = F.mse_loss(input=self.v(state_batch), target=target_v)
+        v_loss = F.mse_loss(input=self.v(state_batch), target=Return_batch)
         v_loss.backward()
         self.v_opt.step()
 

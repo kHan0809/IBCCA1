@@ -12,7 +12,7 @@ def get_args():
     parser.add_argument('--tau', type=float, default=0.005)  #TD3 공용
     parser.add_argument('--lr', type=float, default=3e-4, help="3e-4")
     parser.add_argument('--hidden_size', type=int, default=256)
-    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=2048)
 
     # ====================train===============
     parser.add_argument('--train_num_per_epoch', type=int, default=1000)
@@ -20,7 +20,7 @@ def get_args():
     parser.add_argument('--q_train_epoch', type=int, default=100)
     parser.add_argument('--q_idx', type=int, default=0)
     parser.add_argument('--cql', type=bool,  default=False)
-    parser.add_argument('--qbc_train_epoch', type=int, default=750)
+    parser.add_argument('--qbc_train_epoch', type=int, default=500)
 
     #=====================eval===============
     parser.add_argument('--eval_num',    type=int, default=10, help='5')

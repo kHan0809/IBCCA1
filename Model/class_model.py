@@ -60,6 +60,7 @@ class BC_agent:
 
         self.pi = Policy(o_dim,a_dim,self.hidden_size).to(args.device_train)
         self.pi_opt = torch.optim.Adam(self.pi.parameters(), lr=self.lr)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.pi_opt,step_size=100,gamma=0.4)
 
         #Define networks
         self.q1 = Qnet(self.o_dim, self.a_dim, self.hidden_size).to(args.device_train)
@@ -155,7 +156,7 @@ class BC_agent:
 
             # weight = torch.exp(torch.min((q_values_A-min_q),(q_values_B-min_q))/self.beta).clamp(1.0,3.0) - torch.ones_like(q_values_A)
             # weight = (torch.exp(torch.min((q_values_A - v_value), (q_values_B - v_value)) / abs(v_value)) - torch.ones_like(q_values_A)).clamp(0.0,0.8)
-            weight = (torch.exp(torch.min((q_values_A - v_value), (q_values_B - v_value)) / 0.05) - torch.ones_like(q_values_A)).clamp(0.0, 0.5)
+            weight = (torch.exp(torch.min((q_values_A - v_value), (q_values_B - v_value)) / 0.1) - torch.ones_like(q_values_A)).clamp(0.0, 0.5)
 
         self.pi_opt.zero_grad()
         pred_action = self.pi(state_batch)

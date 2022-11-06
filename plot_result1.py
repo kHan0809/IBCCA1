@@ -3,7 +3,7 @@ import numpy as np
 log_dir = os.getcwd()+'/log'
 task_list = ["halfcheetah", "walker2d", "hopper"]
 data_list = ["-random-v2","-medium-v2", "-medium-replay-v2","-medium-expert-v2"]
-target_epoch = 750
+target_epoch = 500
 
 file_names = os.listdir(log_dir)
 total_name, result = [], []
